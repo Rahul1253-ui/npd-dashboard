@@ -1,273 +1,248 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>NPD Monitoring Sheet</title>
+<meta charset="UTF-8">
+<title>NPD Tracker</title>
 
-  <!-- SheetJS for Excel export -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:15px}
+h2{text-align:center;font-size:24px}
 
-  <style>
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-      margin: 0;
-      padding: 25px;
-      color:#fff;
-    }
-    h2 {
-      text-align:center;
-      margin-bottom: 15px;
-      letter-spacing: 1px;
-      font-weight:700;
-    }
+/* LOGIN */
+#loginBox{
+  max-width:350px;
+  margin:120px auto;
+  background:#fff;
+  padding:25px;
+  border-radius:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,.15);
+  text-align:center;
+}
+#loginBox input{
+  width:100%;
+  padding:10px;
+  font-size:16px;
+  margin-top:10px;
+}
+#loginBox button{
+  width:100%;
+  margin-top:15px;
+  padding:10px;
+  font-size:16px;
+}
 
-    /* GLASS DASHBOARD */
-    #dashboard {
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap:25px;
-      margin:25px 0 35px;
-    }
-    .card {
-      backdrop-filter: blur(14px);
-      background: rgba(255,255,255,0.15);
-      border-radius:20px;
-      padding:25px;
-      box-shadow: 0 20px 45px rgba(0,0,0,0.35);
-      position: relative;
-      overflow: hidden;
-      transition: transform .3s ease, box-shadow .3s ease;
-    }
-    .card:hover {
-      transform: translateY(-10px) scale(1.02);
-      box-shadow: 0 30px 60px rgba(0,0,0,0.55);
-    }
-    .card::before {
-      content:"";
-      position:absolute;
-      inset:0;
-      background: linear-gradient(120deg,transparent,rgba(255,255,255,0.25),transparent);
-      transform: translateX(-100%);
-      transition: transform .6s ease;
-    }
-    .card:hover::before {
-      transform: translateX(100%);
-    }
-    .card h3 {
-      margin:0;
-      font-size:13px;
-      font-weight:600;
-      letter-spacing:1px;
-      text-transform: uppercase;
-      opacity:0.85;
-    }
-    .card h1 {
-      margin:12px 0 0;
-      font-size:46px;
-      font-weight:800;
-    }
-    .card .icon {
-      position:absolute;
-      right:18px;
-      bottom:18px;
-      font-size:48px;
-      opacity:0.25;
-    }
+/* DASHBOARD */
+.dashboard{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:15px;
+  margin-bottom:15px;
+}
+.card{
+  background:#fff;
+  padding:18px;
+  border-radius:8px;
+  text-align:center;
+  cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.card h3{font-size:28px;margin:5px 0}
+.open{border-left:6px solid #007bff}
+.process{border-left:6px solid #ffc107}
+.closed{border-left:6px solid #28a745}
 
-    /* TABLE */
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      background: rgba(255,255,255,0.95);
-      border-radius: 18px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
-      color:#2c3e50;
-    }
-    th, td {
-      border-bottom: 1px solid #eee;
-      padding: 10px;
-      text-align: center;
-      font-size: 12px;
-    }
-    th {
-      background: linear-gradient(90deg,#1f4037,#99f2c8);
-      color: #0f2027;
-      position: sticky;
-      top: 0;
-      font-weight:700;
-    }
-    tr:nth-child(even) { background: #f7f9fc; }
-    select, input {
-      width: 100%;
-      border: none;
-      background: transparent;
-      text-align: center;
-      outline: none;
-      font-weight:500;
-    }
-    button {
-      margin: 12px;
-      padding: 12px 22px;
-      border: none;
-      border-radius: 30px;
-      cursor: pointer;
-      font-weight: 700;
-      letter-spacing: .5px;
-      background: linear-gradient(135deg,#11998e,#38ef7d);
-      color:#0f2027;
-      transition: transform .2s, box-shadow .2s;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
-    }
-    button:hover { transform: scale(1.08); box-shadow:0 18px 40px rgba(0,0,0,0.55);}    
-  </style>
+/* TABLE */
+table{width:100%;border-collapse:collapse;background:#fff;font-size:14px}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#2c3e50;color:#fff;position:sticky;top:0}
+.container{max-height:70vh;overflow:auto}
+
+.status-open{background:#fff}
+.status-process{background:#fff3cd}
+.status-closed{background:#d4edda}
+
+.activity{min-height:38px;white-space:pre-line;cursor:pointer;font-size:13px}
+.hidden-date{display:none}
+
+/* PROGRESS */
+.progress-box{width:100%;background:#e0e0e0;border-radius:10px;height:22px;position:relative}
+.progress-bar{height:100%;border-radius:10px;background:#28a745;width:0%}
+.progress-text{position:absolute;width:100%;font-weight:bold;font-size:13px}
+
+button{padding:7px 12px;font-size:14px;cursor:pointer}
+.logout{float:right;background:#dc3545;color:#fff;border:none}
+</style>
 </head>
+
 <body>
 
-<h2>NPD Monitoring / Tracking Sheet</h2>
-
-<!-- GLASS DASHBOARD -->
-<div id="dashboard">
-  <div class="card">
-    <h3>Total NPD</h3>
-    <h1 id="kpiTotal">0</h1>
-    <div class="icon">📊</div>
-  </div>
-  <div class="card">
-    <h3>Open</h3>
-    <h1 id="kpiOpen">0</h1>
-    <div class="icon">🟠</div>
-  </div>
-  <div class="card">
-    <h3>In Process</h3>
-    <h1 id="kpiProcess">0</h1>
-    <div class="icon">⚙️</div>
-  </div>
-  <div class="card">
-    <h3>Closed</h3>
-    <h1 id="kpiClosed">0</h1>
-    <div class="icon">✅</div>
-  </div>
-</div>
-  </div>
-  <div class="card">
-    <h3>In Process</h3>
-    <h1 id="kpiProcess">0</h1>
-    <div class="icon">⚙️</div>
-  </div>
-  <div class="card">
-    <h3>Closed</h3>
-    <h1 id="kpiClosed">0</h1>
-    <div class="icon">✅</div>
-  </div>
-</div>
-  <div class="card">
-    <h3>Open</h3>
-    <h1 id="kpiOpen">0</h1>
-    <div class="icon">🟠</div>
-  </div>
-  <div class="card">
-    <h3>In Process</h3>
-    <h1 id="kpiProcess">0</h1>
-    <div class="icon">⚙️</div>
-  </div>
-  <div class="card">
-    <h3>Closed</h3>
-    <h1 id="kpiClosed">0</h1>
-    <div class="icon">✅</div>
-  </div>
-</div>
-  <div style="background:#e74c3c;color:#fff;padding:15px;border-radius:8px;text-align:center;">
-    <h3>Open</h3>
-    <h1 id="kpiOpen">0</h1>
-  </div>
-  <div style="background:#f1c40f;color:#fff;padding:15px;border-radius:8px;text-align:center;">
-    <h3>In Process</h3>
-    <h1 id="kpiProcess">0</h1>
-  </div>
-  <div style="background:#2ecc71;color:#fff;padding:15px;border-radius:8px;text-align:center;">
-    <h3>Closed</h3>
-    <h1 id="kpiClosed">0</h1>
-  </div>
+<!-- LOGIN -->
+<div id="loginBox">
+  <h2>Admin Login</h2>
+  <p><b>User:</b> ADMIN</p>
+  <input type="password" id="password" placeholder="Enter Password">
+  <button onclick="login()">Login</button>
+  <p id="error" style="color:red"></p>
 </div>
 
+<!-- APP -->
+<div id="app" style="display:none">
+
+<button class="logout" onclick="logout()">Logout</button>
+<h2>NPD Monitoring Sheet</h2>
+
+<div class="dashboard">
+  <div class="card" onclick="filterStatus('All')"><h3 id="total">0</h3>Total</div>
+  <div class="card open" onclick="filterStatus('Open')"><h3 id="open">0</h3>Open</div>
+  <div class="card process" onclick="filterStatus('In Process')"><h3 id="process">0</h3>In Process</div>
+  <div class="card closed" onclick="filterStatus('Closed')"><h3 id="closed">0</h3>Closed</div>
+</div>
+
+<button onclick="addRow()">➕ Add Row</button>
+
+<div class="container">
 <table id="npdTable">
-  <thead>
-    <tr>
-      <th>S.No</th><th>Customer</th><th>Part</th><th>Part No</th>
-      <th>Qty</th><th>Status</th><th>Enquiry Date</th><th>Remarks</th>
-    </tr>
-  </thead>
-  <tbody id="npdBody"></tbody>
+<thead>
+<tr>
+<th>Sr</th>
+<th>Project</th>
+<th>Part No</th>
+<th>Enquiry</th>
+<th>Feasibility</th>
+<th>RM Order</th>
+<th>RM Test</th>
+<th>Prod Plan</th>
+<th>Docs</th>
+<th>Final Delivery</th>
+<th>Completion</th>
+<th>Status</th>
+<th>Remarks</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody></tbody>
 </table>
-
-<div style="text-align:center; margin-top:10px;">
-  <button onclick="addRow()">Add Row</button>
-  <button onclick="exportExcel()" style="background:#2ecc71;color:white;">Save to Excel</button>
+</div>
 </div>
 
 <script>
-function addRow(){
-  const tbody = document.getElementById('npdBody');
-  const row = document.createElement('tr');
-  row.innerHTML = `
-    <td>${tbody.rows.length + 1}</td>
-    <td><input oninput="updateDashboard()"></td>
-    <td><input oninput="updateDashboard()"></td>
-    <td><input oninput="updateDashboard()"></td>
-    <td><input type="number" oninput="updateDashboard()"></td>
-    <td>
-      <select onchange="updateDashboard()">
-        <option>Open</option>
-        <option>In Process</option>
-        <option>Closed</option>
-      </select>
-    </td>
-    <td><input type="date" oninput="updateDashboard()"></td>
-    <td><input oninput="updateDashboard()"></td>`;
-  tbody.appendChild(row);
-  updateDashboard();
+const ADMIN_PASSWORD="admin123";
+
+/* LOGIN */
+function login(){
+  if(password.value===ADMIN_PASSWORD){
+    localStorage.setItem("logged","yes");
+    showApp();
+  }else error.innerText="Wrong password";
 }
-
-function exportExcel(){
-  const table = document.getElementById('npdTable');
-  const data = [];
-
-  for (let r = 0; r < table.rows.length; r++){
-    const row = [];
-    for (let c = 0; c < table.rows[r].cells.length; c++){
-      const cell = table.rows[r].cells[c];
-      const input = cell.querySelector('input, select');
-      row.push(input ? input.value : cell.innerText);
-    }
-    data.push(row);
-  }
-
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, 'NPD');
-
-  XLSX.writeFile(wb, 'NPD_Tracker.xlsx');
+function logout(){
+  localStorage.removeItem("logged");
+  location.reload();
 }
-
-function updateDashboard(){
-  let total = 0, open = 0, process = 0, closed = 0;
-  document.querySelectorAll('#npdBody tr').forEach(row => {
-    const status = row.cells[5].querySelector('select').value;
-    total++;
-    if(status === 'Open') open++;
-    if(status === 'In Process') process++;
-    if(status === 'Closed') closed++;
-  });
-  document.getElementById('kpiTotal').innerText = total;
-  document.getElementById('kpiOpen').innerText = open;
-  document.getElementById('kpiProcess').innerText = process;
-  document.getElementById('kpiClosed').innerText = closed;
+function showApp(){
+  loginBox.style.display="none";
+  app.style.display="block";
+  load();
 }
+if(localStorage.getItem("logged")==="yes") showApp();
 
-// initial rows
-for(let i=0;i<10;i++) addRow();
+/* NPD LOGIC */
+let tbody=document.querySelector("tbody");
+
+function activityCell(d=""){
+ return `<div class="activity" onclick="openCal(this)">${d}</div>
+ <input type="date" class="hidden-date" onchange="saveDate(this)">`;
+}
+function progressCell(){
+ return `<div class="progress-box"><div class="progress-bar"></div>
+ <div class="progress-text">0%</div></div>`;
+}
+function addRow(d={}){
+ let r=tbody.insertRow();
+ r.innerHTML=`
+ <td>${tbody.rows.length}</td>
+ <td contenteditable>${d.project||""}</td>
+ <td contenteditable>${d.part||""}</td>
+ <td><input type="date"></td>
+ <td>${activityCell(d.feas)}</td>
+ <td>${activityCell(d.rmorder)}</td>
+ <td>${activityCell(d.rmtest)}</td>
+ <td>${activityCell(d.plan)}</td>
+ <td>${activityCell(d.docs)}</td>
+ <td>${activityCell(d.delivery)}</td>
+ <td>${progressCell()}</td>
+ <td>
+ <select onchange="updateStatus(this)">
+ <option>Open</option><option>In Process</option><option>Closed</option>
+ </select></td>
+ <td contenteditable>${d.remark||""}</td>
+ <td><button onclick="this.closest('tr').remove();save()">🗑</button></td>`;
+ save();
+}
+function openCal(div){
+ let i=div.nextElementSibling;
+ i.showPicker?i.showPicker():i.click();
+}
+function saveDate(i){
+ let b=i.previousElementSibling;
+ let l=b.innerText.trim().split("\n").filter(x=>x);
+ if(l.length>=5) return;
+ b.innerText+=`${l.length==0?"P":"R"+l.length}: ${i.value}\n`;
+ updateProgress(i.closest("tr"));
+ save();
+}
+function updateProgress(r){
+ let c=0;
+ for(let i=4;i<=9;i++)
+ if(r.cells[i].querySelector(".activity").innerText.trim()) c++;
+ let p=Math.round(c/6*100);
+ r.querySelector(".progress-bar").style.width=p+"%";
+ r.querySelector(".progress-text").innerText=p+"%";
+}
+function updateStatus(s){
+ let r=s.closest("tr"); r.className="";
+ r.classList.add("status-"+s.value.replace(" ","-").toLowerCase());
+ save();
+}
+function save(){
+ let d=[];
+ [...tbody.rows].forEach(r=>{
+ d.push({
+ project:r.cells[1].innerText,
+ part:r.cells[2].innerText,
+ feas:r.cells[4].innerText,
+ rmorder:r.cells[5].innerText,
+ rmtest:r.cells[6].innerText,
+ plan:r.cells[7].innerText,
+ docs:r.cells[8].innerText,
+ delivery:r.cells[9].innerText,
+ status:r.cells[11].children[0].value,
+ remark:r.cells[12].innerText
+ });
+ });
+ localStorage.setItem("npd",JSON.stringify(d));
+ dashboard();
+}
+function load(){
+ let d=JSON.parse(localStorage.getItem("npd")||"[]");
+ d.forEach(x=>addRow(x));
+ dashboard();
+}
+function dashboard(){
+ let o=0,p=0,c=0;
+ [...tbody.rows].forEach(r=>{
+ let s=r.cells[11].children[0].value;
+ if(s=="Open")o++; if(s=="In Process")p++; if(s=="Closed")c++;
+ });
+ total.innerText=o+p+c; open.innerText=o;
+ process.innerText=p; closed.innerText=c;
+}
+function filterStatus(s){
+ [...tbody.rows].forEach(r=>{
+ let v=r.cells[11].children[0].value;
+ r.style.display=(s=="All"||v==s)?"":"none";
+ });
+}
 </script>
 
 </body>
