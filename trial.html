@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NPD Tracker</title>
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:15px}
+h2{text-align:center;font-size:26px}
+
+/* LOGIN */
+#loginBox{
+  max-width:350px;margin:120px auto;background:#fff;
+  padding:25px;border-radius:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,.15);
+  text-align:center;
+}
+#loginBox input{width:100%;padding:10px;font-size:16px;margin-top:10px}
+#loginBox button{width:100%;margin-top:15px;padding:10px;font-size:16px}
+
+/* DASHBOARD */
+.dashboard{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:15px;margin-bottom:15px;
+}
+.card{
+  background:#fff;padding:18px;border-radius:8px;
+  text-align:center;cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.card h3{font-size:30px;margin:5px 0}
+.open{border-left:6px solid #007bff}
+.process{border-left:6px solid #ffc107}
+.closed{border-left:6px solid #28a745}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;background:#fff;font-size:15px}
+th,td{border:1px solid #ccc;padding:8px;text-align:center;vertical-align:middle}
+th{background:#2c3e50;color:#fff;position:sticky;top:0}
+.container{max-height:70vh;overflow:auto}
+
+/* ACTIVITY */
+.activity{min-height:40px;font-size:14px;cursor:pointer}
+.activity div{line-height:1.4}
+.old{text-decoration:line-through;color:#888}
+
+/* PROGRESS */
+.progress-box{width:100%;background:#e0e0e0;border-radius:10px;height:22px;position:relative}
+.progress-bar{height:100%;border-radius:10px;background:#28a745;width:0%}
+.progress-text{position:absolute;width:100%;font-size:13px;font-weight:bold}
+
+/* STATUS */
+.status-in-process{background:#fff3cd}
+.status-closed{background:#d4edda}
+
+button{padding:7px 12px;font-size:14px;cursor:pointer}
+.logout{float:right;background:#dc3545;color:#fff;border:none}
+.hidden-date{display:none}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginBox">
+  <h2>Admin Login</h2>
+  <p><b>User:</b> ADMIN</p>
+  <input type="password" id="password" placeholder="Enter Password">
+  <button onclick="login()">Login</button>
+  <p id="error" style="color:red"></p>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+<button class="logout" onclick="logout()">Logout</button>
+<h2>NPD Monitoring Sheet</h2>
+
+<div class="dashboard">
+  <div class="card" onclick="filterStatus('All')"><h3 id="total">0</h3>Total</div>
+  <div class="card open" onclick="filterStatus('Open')"><h3 id="open">0</h3>Open</div>
+  <div class="card process" onclick="filterStatus('In Process')"><h3 id="process">0</h3>In Process</div>
+  <div class="card closed" onclick="filterStatus('Closed')"><h3 id="closed">0</h3>Closed</div>
+</div>
+
+<button onclick="addRow()">➕ Add Row</button>
+<button onclick="saveData()">💾 Save</button>
+
+<div class="container">
+<table>
+<thead>
+<tr>
+<th>Sr</th>
+<th>Project</th>
+<th>Part No</th>
+<th>Enquiry</th>
+<th>Feasibility</th>
+<th>RM Order</th>
+<th>RM Test</th>
+<th>Plan</th>
+<th>Docs</th>
+<th>Final Delivery</th>
+<th>Completion</th>
+<th>Status</th>
+<th>Remarks</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+</div>
+
+<script>
+const ADMIN_PASSWORD="admin123";
+const STORAGE_KEY="npd_tracker_data";
+const LOGIN_KEY="npd_logged";
+const tbody=document.getElementById("tbody");
+
+/* LOGIN */
+function login(){
+ if(password.value===ADMIN_PASSWORD){
+  localStorage.setItem(LOGIN_KEY,"yes");
+  showApp();
+ }else error.innerText="Wrong password";
+}
+function logout(){
+ localStorage.removeItem(LOGIN_KEY); // IMPORTANT: data is NOT deleted
+ location.reload();
+}
+function showApp(){
+ loginBox.style.display="none";
+ app.style.display="block";
+ load();
+}
+if(localStorage.getItem(LOGIN_KEY)==="yes") showApp();
+
+/* CELLS */
+function activityCell(){
+ return `<div class="activity" onclick="openCal(this)"></div>
+         <input type="date" class="hidden-date" onchange="saveDate(this)">`;
+}
+function progressCell(){
+ return `<div class="progress-box">
+          <div class="progress-bar"></div>
+          <div class="progress-text">0%</div>
+         </div>`;
+}
+
+/* ADD ROW */
+function addRow(){
+ let r=tbody.insertRow();
+ r.innerHTML=`
+ <td></td>
+ <td contenteditable onkeydown="cellKey(event)"></td>
+ <td contenteditable onkeydown="cellKey(event)"></td>
+ <td><input type="date"></td>
+ <td>${activityCell()}</td>
+ <td>${activityCell()}</td>
+ <td>${activityCell()}</td>
+ <td>${activityCell()}</td>
+ <td>${activityCell()}</td>
+ <td>${activityCell()}</td>
+ <td>${progressCell()}</td>
+ <td>
+  <select onchange="updateStatus(this)">
+   <option>Open</option>
+   <option>In Process</option>
+   <option>Closed</option>
+  </select>
+ </td>
+ <td contenteditable onkeydown="cellKey(event)"></td>
+ <td><button onclick="this.closest('tr').remove();refresh();saveData()">🗑</button></td>`;
+ refresh();
+}
+
+/* ENTER = TAB */
+function cellKey(e){
+ if(e.key==="Enter"){
+  e.preventDefault();
+  let td=e.target.closest("td");
+  let next=td.nextElementSibling;
+  if(next){
+   let f=next.querySelector("input,select,[contenteditable]");
+   if(f) f.focus();
+  }
+ }
+}
+
+/* DATE */
+function openCal(div){
+ let i=div.nextElementSibling;
+ i.showPicker?i.showPicker():i.click();
+}
+function saveDate(i){
+ let box=i.previousElementSibling;
+ let items=[...box.querySelectorAll("div")];
+ items.forEach(x=>x.classList.add("old"));
+ let tag=items.length===0?"P":"R"+items.length;
+ let d=document.createElement("div");
+ d.innerText=`${tag}: ${i.value}`;
+ box.appendChild(d);
+ updateProgress(i.closest("tr"));
+}
+
+/* PROGRESS */
+function updateProgress(r){
+ let c=0;
+ for(let i=4;i<=9;i++)
+  if(r.cells[i].querySelector(".activity").innerText.trim()) c++;
+ let p=Math.round(c/6*100);
+ r.querySelector(".progress-bar").style.width=p+"%";
+ r.querySelector(".progress-text").innerText=p+"%";
+}
+
+/* STATUS */
+function updateStatus(s){
+ let r=s.closest("tr");
+ r.className="";
+ r.classList.add("status-"+s.value.replace(" ","-").toLowerCase());
+ refresh();
+}
+
+/* SAVE / LOAD */
+function saveData(){
+ let data=[];
+ [...tbody.rows].forEach(r=>{
+  data.push({
+   project:r.cells[1].innerText,
+   part:r.cells[2].innerText,
+   enquiry:r.cells[3].children[0].value,
+   activities:[4,5,6,7,8,9].map(i=>r.cells[i].querySelector(".activity").innerHTML),
+   status:r.cells[11].children[0].value,
+   remarks:r.cells[12].innerText
+  });
+ });
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+ alert("Data Saved Successfully");
+}
+
+function load(){
+ let data=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");
+ tbody.innerHTML="";
+ data.forEach(d=>{
+  addRow();
+  let r=tbody.lastChild;
+  r.cells[1].innerText=d.project;
+  r.cells[2].innerText=d.part;
+  r.cells[3].children[0].value=d.enquiry;
+  [4,5,6,7,8,9].forEach((i,n)=>{
+   r.cells[i].querySelector(".activity").innerHTML=d.activities[n];
+  });
+  r.cells[11].children[0].value=d.status;
+  updateStatus(r.cells[11].children[0]);
+  r.cells[12].innerText=d.remarks;
+  updateProgress(r);
+ });
+ refresh();
+}
+
+/* DASHBOARD */
+function refresh(){
+ [...tbody.rows].forEach((r,i)=>r.cells[0].innerText=i+1);
+ dashboard();
+}
+function dashboard(){
+ let o=0,p=0,c=0;
+ [...tbody.rows].forEach(r=>{
+  let v=r.cells[11].children[0].value;
+  if(v==="Open")o++; else if(v==="In Process")p++; else c++;
+ });
+ total.innerText=o+p+c;
+ open.innerText=o; process.innerText=p; closed.innerText=c;
+}
+function filterStatus(s){
+ [...tbody.rows].forEach(r=>{
+  let v=r.cells[11].children[0].value;
+  r.style.display=(s==="All"||v===s)?"":"none";
+ });
+}
+</script>
+
+</body>
+</html> 
