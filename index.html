@@ -83,7 +83,7 @@ button{padding:7px 12px;font-size:14px;cursor:pointer}
 </div>
 
 <button onclick="addRow()">➕ Add Row</button>
-<button onclick="saveData()">💾 Save</button>
+<button onclick="saveData()">☁ Save to Google Sheet</button>
 
 <div class="container">
 <table>
@@ -112,8 +112,9 @@ button{padding:7px 12px;font-size:14px;cursor:pointer}
 
 <script>
 const ADMIN_PASSWORD="admin123";
-const STORAGE_KEY="npd_tracker_data";
-const LOGIN_KEY="npd_logged";
+const LOGIN_KEY="npd_login";
+const GOOGLE_URL="https://script.google.com/macros/s/AKfycbxTMs1x1cThisNe7LOPtTDrKM_5cKrUJZ3Zz5-ZUbTwz8gqs3-H_zUoZU0GqOY6YkRU/exec";
+
 const tbody=document.getElementById("tbody");
 
 /* LOGIN */
@@ -124,13 +125,12 @@ function login(){
  }else error.innerText="Wrong password";
 }
 function logout(){
- localStorage.removeItem(LOGIN_KEY); // IMPORTANT: data is NOT deleted
+ localStorage.removeItem(LOGIN_KEY);
  location.reload();
 }
 function showApp(){
  loginBox.style.display="none";
  app.style.display="block";
- load();
 }
 if(localStorage.getItem(LOGIN_KEY)==="yes") showApp();
 
@@ -151,8 +151,8 @@ function addRow(){
  let r=tbody.insertRow();
  r.innerHTML=`
  <td></td>
- <td contenteditable onkeydown="cellKey(event)"></td>
- <td contenteditable onkeydown="cellKey(event)"></td>
+ <td contenteditable></td>
+ <td contenteditable></td>
  <td><input type="date"></td>
  <td>${activityCell()}</td>
  <td>${activityCell()}</td>
@@ -168,22 +168,9 @@ function addRow(){
    <option>Closed</option>
   </select>
  </td>
- <td contenteditable onkeydown="cellKey(event)"></td>
- <td><button onclick="this.closest('tr').remove();refresh();saveData()">🗑</button></td>`;
+ <td contenteditable></td>
+ <td><button onclick="this.closest('tr').remove();refresh()">🗑</button></td>`;
  refresh();
-}
-
-/* ENTER = TAB */
-function cellKey(e){
- if(e.key==="Enter"){
-  e.preventDefault();
-  let td=e.target.closest("td");
-  let next=td.nextElementSibling;
-  if(next){
-   let f=next.querySelector("input,select,[contenteditable]");
-   if(f) f.focus();
-  }
- }
 }
 
 /* DATE */
@@ -220,7 +207,7 @@ function updateStatus(s){
  refresh();
 }
 
-/* SAVE / LOAD */
+/* SAVE TO GOOGLE SHEET */
 function saveData(){
  let data=[];
  [...tbody.rows].forEach(r=>{
@@ -228,33 +215,24 @@ function saveData(){
    project:r.cells[1].innerText,
    part:r.cells[2].innerText,
    enquiry:r.cells[3].children[0].value,
-   activities:[4,5,6,7,8,9].map(i=>r.cells[i].querySelector(".activity").innerHTML),
+   feasibility:r.cells[4].querySelector(".activity").innerText,
+   rmOrder:r.cells[5].querySelector(".activity").innerText,
+   rmTest:r.cells[6].querySelector(".activity").innerText,
+   plan:r.cells[7].querySelector(".activity").innerText,
+   docs:r.cells[8].querySelector(".activity").innerText,
+   final:r.cells[9].querySelector(".activity").innerText,
    status:r.cells[11].children[0].value,
    remarks:r.cells[12].innerText
   });
  });
- localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
- alert("Data Saved Successfully");
-}
 
-function load(){
- let data=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");
- tbody.innerHTML="";
- data.forEach(d=>{
-  addRow();
-  let r=tbody.lastChild;
-  r.cells[1].innerText=d.project;
-  r.cells[2].innerText=d.part;
-  r.cells[3].children[0].value=d.enquiry;
-  [4,5,6,7,8,9].forEach((i,n)=>{
-   r.cells[i].querySelector(".activity").innerHTML=d.activities[n];
-  });
-  r.cells[11].children[0].value=d.status;
-  updateStatus(r.cells[11].children[0]);
-  r.cells[12].innerText=d.remarks;
-  updateProgress(r);
+ fetch(GOOGLE_URL,{
+  method:"POST",
+  body:JSON.stringify(data),
+  mode:"no-cors"
  });
- refresh();
+
+ alert("✅ Data saved to Google Sheet");
 }
 
 /* DASHBOARD */
@@ -280,4 +258,4 @@ function filterStatus(s){
 </script>
 
 </body>
-</html> 
+</html>
